@@ -3,17 +3,10 @@ import { formatForInput } from '../utils/analytics.js';
 
 const DATE_FIELD_ID = 'github-analytics-date';
 
-function CredentialsForm({
-  defaultValues,
-  onSubmit,
-  repositories,
-  authStatus,
-  authError,
-  authenticatedUser,
-  onLogin,
-  onLogout,
-}) {
+function CredentialsForm({ defaultValues, onSubmit, repositories }) {
   const [formValues, setFormValues] = useState({
+    username: defaultValues.username,
+    token: defaultValues.token,
     since: defaultValues.since,
     until: defaultValues.until,
     repos: defaultValues.repos ?? [],
@@ -21,6 +14,8 @@ function CredentialsForm({
 
   useEffect(() => {
     setFormValues({
+      username: defaultValues.username,
+      token: defaultValues.token,
       since: defaultValues.since,
       until: defaultValues.until,
       repos: defaultValues.repos ?? [],
@@ -37,9 +32,6 @@ function CredentialsForm({
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (authStatus !== 'authenticated') {
-      return;
-    }
     const payload = {
       ...formValues,
       since: formValues.since ? new Date(formValues.since) : undefined,
@@ -71,98 +63,42 @@ function CredentialsForm({
   }, [repositories]);
 
   const selectedCount = formValues.repos?.length ?? 0;
-  const isAuthenticated = authStatus === 'authenticated';
-  const isAuthenticating = authStatus === 'authenticating';
-  const avatarUrl = authenticatedUser?.avatarUrl
-    || (authenticatedUser?.id
-      ? `https://avatars.githubusercontent.com/u/${authenticatedUser.id}?v=4`
-      : undefined);
 
   return (
     <form onSubmit={handleSubmit}>
       <h2>Connect to GitHub</h2>
       <p>
-        Sign in with GitHub to securely grant the dashboard read-only access to
-        your repositories. Authentication happens through OAuth—we never see or
-        store your password or personal access tokens.
+        Provide your GitHub username and an optional personal access token. We
+        only request read-only repository metadata and never persist your
+        credentials.
       </p>
 
-      <div
-        style={{
-          marginTop: '1rem',
-          padding: '1rem',
-          border: '1px solid rgba(148, 163, 184, 0.25)',
-          borderRadius: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '1rem',
-          flexWrap: 'wrap',
-        }}
-      >
-        {isAuthenticated && authenticatedUser ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={`${authenticatedUser.login} avatar`}
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  border: '2px solid rgba(59, 130, 246, 0.4)',
-                }}
-              />
-            ) : null}
-            <div>
-              <div style={{ fontWeight: 600, color: '#0f172a' }}>
-                {authenticatedUser.name || authenticatedUser.login}
-              </div>
-              <a
-                href={authenticatedUser.htmlUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: '#2563eb', fontSize: '0.85rem' }}
-              >
-                @{authenticatedUser.login}
-              </a>
-            </div>
-          </div>
-        ) : (
-          <div style={{ color: '#475569', fontSize: '0.9rem' }}>
-            {isAuthenticating
-              ? 'Finishing GitHub sign-in...'
-              : 'Sign in to enable private repository metrics and personalise insights.'}
-          </div>
-        )}
-
-        {isAuthenticated ? (
-          <button
-            type="button"
-            className="button secondary"
-            onClick={onLogout}
-            style={{ minWidth: '160px' }}
-          >
-            Sign out
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="button"
-            onClick={onLogin}
-            disabled={isAuthenticating}
-            style={{ minWidth: '200px' }}
-          >
-            {isAuthenticating ? 'Connecting…' : 'Sign in with GitHub'}
-          </button>
-        )}
-      </div>
-
-      {authError ? (
-        <p style={{ marginTop: '0.75rem', color: '#dc2626' }}>{authError}</p>
-      ) : null}
-
       <div className="input-group">
+        <label htmlFor="username">
+          Username
+          <input
+            id="username"
+            name="username"
+            required
+            placeholder="hubber extraordinaire"
+            value={formValues.username}
+            onChange={handleChange('username')}
+          />
+        </label>
+
+        <label htmlFor="token">
+          Personal access token (optional)
+          <input
+            id="token"
+            name="token"
+            type="password"
+            placeholder="ghp_your_super_secret_token"
+            value={formValues.token}
+            onChange={handleChange('token')}
+            autoComplete="off"
+          />
+        </label>
+
         <label htmlFor={`${DATE_FIELD_ID}-since`}>
           Since
           <input
@@ -170,7 +106,6 @@ function CredentialsForm({
             type="date"
             value={formatForInput(formValues.since)}
             onChange={handleChange('since')}
-            disabled={!isAuthenticated}
           />
         </label>
 
@@ -181,7 +116,6 @@ function CredentialsForm({
             type="date"
             value={formatForInput(formValues.until)}
             onChange={handleChange('until')}
-            disabled={!isAuthenticated}
           />
         </label>
       </div>
@@ -218,15 +152,13 @@ function CredentialsForm({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',
-                    cursor: isAuthenticated ? 'pointer' : 'not-allowed',
-                    opacity: isAuthenticated ? 1 : 0.6,
+                    cursor: 'pointer',
                   }}
                 >
                   <input
                     type="checkbox"
                     checked={checked}
                     onChange={() => toggleRepository(repo.name)}
-                    disabled={!isAuthenticated}
                     style={{ width: '1rem', height: '1rem' }}
                   />
                   <div>
@@ -234,8 +166,9 @@ function CredentialsForm({
                       {repo.name}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#475569' }}>
-                      ⭐ {repo.stars.toLocaleString()} • Forks{' '}
-                      {repo.forks.toLocaleString()} • Updated {repo.lastPushed}
+                      ⭐ {repo.stars.toLocaleString()} • Forks:{' '}
+                      {repo.forks.toLocaleString()} • Updated{' '}
+                      {repo.lastPushed}
                     </div>
                   </div>
                 </label>
@@ -251,12 +184,12 @@ function CredentialsForm({
       ) : null}
 
       <div style={{ marginTop: '1.75rem', display: 'flex', gap: '1rem' }}>
-        <button className="button" type="submit" disabled={!isAuthenticated}>
+        <button className="button" type="submit">
           Generate analytics
         </button>
         <span style={{ color: '#475569', fontSize: '0.85rem' }}>
-          Tip: OAuth scopes requested are <code>repo</code> and <code>read:org</code>
-          to unlock private repositories and organisation context.
+          Tip: tokens need <code>repo</code> and <code>read:org</code> scopes to
+          include private work.
         </span>
       </div>
     </form>

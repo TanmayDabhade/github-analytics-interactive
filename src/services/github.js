@@ -14,7 +14,7 @@ async function fetchWithAuth(path, token, params = {}) {
   const response = await fetch(url.toString(), {
     headers: token
       ? {
-          Authorization: `Bearer ${token}`,
+          Authorization: `token ${token}`,
           Accept: 'application/vnd.github+json',
         }
       : { Accept: 'application/vnd.github+json' },
@@ -30,15 +30,10 @@ async function fetchWithAuth(path, token, params = {}) {
   return response.json();
 }
 
-export async function fetchRepositories({ username, token, self = false }) {
-  const path = self ? '/user/repos' : `/users/${username}/repos`;
-  if (!self && !username) {
-    throw new Error('A username is required to list repositories.');
-  }
-
+export async function fetchRepositories({ username, token }) {
   const repositories = [];
   for (let page = 1; page <= MAX_PAGES; page += 1) {
-    const payload = await fetchWithAuth(path, token, {
+    const payload = await fetchWithAuth(`/users/${username}/repos`, token, {
       per_page: 100,
       page,
       sort: 'pushed',

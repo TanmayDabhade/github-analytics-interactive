@@ -111,16 +111,6 @@ header p {
   box-shadow: 0 14px 30px rgba(37, 99, 235, 0.35);
 }
 
-.button.secondary {
-  background: #e2e8f0;
-  color: #1e293b;
-  box-shadow: none;
-}
-
-.button.secondary:not(:disabled):hover {
-  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.35);
-}
-
 .button:disabled {
   opacity: 0.6;
   cursor: not-allowed;

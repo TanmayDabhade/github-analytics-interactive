@@ -27,8 +27,8 @@ function useGithubAnalytics() {
     until,
     repos,
   }) => {
-    if (!token) {
-      setError('Authenticate with GitHub to load analytics.');
+    if (!username) {
+      setError('Please enter a GitHub username.');
       return;
     }
 
@@ -36,13 +36,9 @@ function useGithubAnalytics() {
     setError(null);
 
     try {
-      const repositoryList = await fetchRepositories({
-        username,
-        token,
-        self: Boolean(token),
-      });
+      const repositoryList = await fetchRepositories({ username, token });
       if (repositoryList.length === 0) {
-        throw new Error('No repositories found for your account.');
+        throw new Error('No repositories found. Check your username or token.');
       }
 
       const filteredRepositories = repos?.length
@@ -135,12 +131,7 @@ function useGithubAnalytics() {
     }
   }, []);
 
-  const reset = useCallback(() => {
-    setData(null);
-    setError(null);
-  }, []);
-
-  return { data, loading, error, loadAnalytics, reset };
+  return { data, loading, error, loadAnalytics };
 }
 
 export default useGithubAnalytics;

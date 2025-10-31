@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import CredentialsForm from './components/CredentialsForm.jsx';
 import AnalyticsSummary from './components/AnalyticsSummary.jsx';
 import CommitActivityChart from './components/CommitActivityChart.jsx';
@@ -9,77 +9,30 @@ import InsightsPanel from './components/InsightsPanel.jsx';
 import LoadingOverlay from './components/LoadingOverlay.jsx';
 import ErrorBanner from './components/ErrorBanner.jsx';
 import useGithubAnalytics from './hooks/useGithubAnalytics.js';
-import useGithubAuth from './hooks/useGithubAuth.js';
 import { getDefaultDateRange } from './utils/analytics.js';
 
 function App() {
   const defaultRange = useMemo(() => getDefaultDateRange(), []);
   const [filters, setFilters] = useState({
+    username: '',
+    token: '',
     since: defaultRange.since,
     until: defaultRange.until,
     repos: [],
   });
 
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const { data, loading, error, loadAnalytics } = useGithubAnalytics();
 
-  const { data, loading, error, loadAnalytics, reset } = useGithubAnalytics();
-  const auth = useGithubAuth();
+  const handleLoad = async (formValues) => {
+    const payload = {
+      ...formValues,
+      since: formValues.since || defaultRange.since,
+      until: formValues.until || defaultRange.until,
+    };
 
-  const handleLoad = useCallback(
-    async (formValues) => {
-      if (!auth?.accessToken || !auth?.user?.login) {
-        return;
-      }
-
-      const payload = {
-        ...formValues,
-        username: auth.user.login,
-        token: auth.accessToken,
-        since: formValues.since || defaultRange.since,
-        until: formValues.until || defaultRange.until,
-      };
-
-      setFilters({
-        since: payload.since,
-        until: payload.until,
-        repos: payload.repos ?? [],
-      });
-
-      await loadAnalytics(payload);
-    },
-    [auth?.accessToken, auth?.user?.login, defaultRange.since, defaultRange.until, loadAnalytics]
-  );
-
-  useEffect(() => {
-    if (auth.status === 'authenticated' && auth.accessToken && auth.user?.login) {
-      if (!initialLoadComplete) {
-        handleLoad(filters).finally(() => setInitialLoadComplete(true));
-      }
-    } else if (auth.status === 'unauthenticated') {
-      setInitialLoadComplete(false);
-      reset();
-      const hasCustomFilters =
-        filters.repos.length > 0 ||
-        (filters.since && filters.since.getTime?.() !== defaultRange.since.getTime?.()) ||
-        (filters.until && filters.until.getTime?.() !== defaultRange.until.getTime?.());
-      if (hasCustomFilters) {
-        setFilters({
-          since: defaultRange.since,
-          until: defaultRange.until,
-          repos: [],
-        });
-      }
-    }
-  }, [
-    auth.status,
-    auth.accessToken,
-    auth.user?.login,
-    filters,
-    handleLoad,
-    initialLoadComplete,
-    defaultRange,
-    reset,
-  ]);
+    setFilters(payload);
+    await loadAnalytics(payload);
+  };
 
   return (
     <div className="main-layout">
@@ -87,9 +40,9 @@ function App() {
         <h1>GitHub Analytics Interactive</h1>
         <p>
           Drill into contribution patterns, pull requests, and repository health
-          with a dashboard tailored for power users. Connect with GitHub OAuth
-          to analyse your personal or organization activity with richer commit
-          histories and metadata that go beyond built-in insights.
+          with a dashboard tailored for power users. Authenticate with a
+          personal access token to unlock private repositories, richer commit
+          histories, and metadata that goes beyond built-in GitHub insights.
         </p>
       </header>
 
@@ -99,11 +52,6 @@ function App() {
             defaultValues={filters}
             repositories={data?.repositories ?? []}
             onSubmit={handleLoad}
-            authStatus={auth.status}
-            authError={auth.error}
-            authenticatedUser={auth.user}
-            onLogin={auth.login}
-            onLogout={auth.logout}
           />
           {error ? <ErrorBanner message={error} /> : null}
         </div>
@@ -132,9 +80,10 @@ function App() {
         ) : (
           <div className="card grid-3">
             <p>
-              Authenticate with GitHub to generate a live snapshot of your
-              repositories and contribution analytics. Once connected, adjust
-              the date range or focus repositories to refine the insights.
+              Enter a username to generate a live snapshot of repositories and
+              contribution analytics. Start with a public user like
+              <strong> torvalds </strong> or <strong> gaearon</strong> to see the
+              dashboard in action.
             </p>
           </div>
         )}
